@@ -44,17 +44,23 @@ product_data = {
 # Single Prediction
 if st.button("Predict", type='primary'):
 
-    response = requests.post(
-        f"{BACKEND_URL}/v1/predict",
-        json=product_data
-    )
-
-    if response.status_code == 200:
+    try:
+        response = requests.post(
+            f"{BACKEND_URL}/v1/predict",
+            json=product_data,
+            timeout=30
+        )
+        response.raise_for_status()
+    except requests.exceptions.RequestException as exc:
+        st.error(
+            f"Unable to connect to the prediction API at {BACKEND_URL}. "
+            "Check that the backend is running and BACKEND_URL is correct."
+        )
+        st.caption(str(exc))
+    else:
         result = response.json()
         predicted_sales = result["Sales"]
         st.success(f"Predicted Product Store Sales Total: ₹{predicted_sales:.2f}")
-    else:
-        st.error("Unable to connect to the prediction API.")
 
 # Batch Prediction
 st.subheader("Batch Prediction")
@@ -68,21 +74,27 @@ if uploaded_file is not None:
 
     if st.button("Predict for Batch", type='primary'):
 
-        response = requests.post(
-            f"{BACKEND_URL}/v1/predictbatch",
-            files={"file": uploaded_file}
-        )
-
-        if response.status_code == 200:
+        try:
+            response = requests.post(
+                f"{BACKEND_URL}/v1/predictbatch",
+                files={"file": uploaded_file},
+                timeout=30
+            )
+            response.raise_for_status()
+        except requests.exceptions.RequestException as exc:
+            st.error(
+                f"Unable to connect to the prediction API at {BACKEND_URL}. "
+                "Check that the backend is running and BACKEND_URL is correct."
+            )
+            st.caption(str(exc))
+        else:
             results = response.json()
-
             st.success("Predictions completed successfully!")
 
             try:
                 if isinstance(results, list):
                     df = pd.DataFrame(results)
                 elif isinstance(results, dict):
-                    # Check if all values are scalars
                     if all(not isinstance(v, (list, dict)) for v in results.values()):
                         df = pd.DataFrame([results])
                     else:
@@ -95,6 +107,3 @@ if uploaded_file is not None:
             except Exception as e:
                 st.error(f"Unable to display results as a table: {e}")
                 st.json(results)
-
-        else:
-            st.error("Unable to connect to the prediction API.")
